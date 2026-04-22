@@ -1,0 +1,40 @@
+# Environment files — never commit real credentials
+.env
+*.tfvars
+!*.tfvars.example
+
+# Terraform state — lives in S3, not git
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfstate.lock.info
+.terraform.lock.hcl
+
+# Kubernetes secrets — contain base64 credentials
+k8s/**/secret.yaml
+!k8s/**/*example*
+
+# Node dependencies — reinstalled via npm install
+node_modules/
+**/node_modules/
+
+# Build output
+**/dist/
+**/build/
+
+# Docker
+.docker/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*

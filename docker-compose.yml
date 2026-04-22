@@ -1,0 +1,69 @@
+# docker-compose.yml
+# Runs the full stack locally for development and testing
+# Usage: docker compose up --build
+
+services:
+
+  # ── PostgreSQL Database ──────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: taskmanager-postgres
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB:-taskmanager}
+      POSTGRES_USER:     ${POSTGRES_USER:-taskuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-taskpassword}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-taskuser} -d ${POSTGRES_DB:-taskmanager}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 45s
+
+  # ── Backend API ──────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./app/backend
+      dockerfile: Dockerfile
+      target: production
+    container_name: taskmanager-backend
+    environment:
+      PORT:              5000
+      POSTGRES_HOST:     postgres
+      POSTGRES_PORT:     5432
+      POSTGRES_DB:       ${POSTGRES_DB:-taskmanager}
+      POSTGRES_USER:     ${POSTGRES_USER:-taskuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-taskpassword}
+      CORS_ORIGIN:       "http://localhost:3000"
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── Frontend ─────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./app/frontend
+      dockerfile: Dockerfile
+      target: production
+    container_name: taskmanager-frontend
+    environment:
+      VITE_API_URL: "http://localhost:5000"
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+    driver: local

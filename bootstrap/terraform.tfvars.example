@@ -1,0 +1,8 @@
+# bootstrap/terraform.tfvars
+# Copy this file and fill in your real values.
+# NEVER commit the filled-in version — it's in .gitignore
+
+aws_region   = "us-east-1"
+github_org   = "Gordonwest08"
+github_repo  = "cloudnative-task-manager"
+project_name = "taskmanager"
