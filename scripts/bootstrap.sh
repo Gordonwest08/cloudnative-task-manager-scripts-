@@ -40,12 +40,20 @@ kubectl wait --for=condition=Ready nodes --all --timeout=300s
 echo "    All nodes Ready."
 
 # -------------------------------------------------------------------
-# STEP 3 — Install Metrics Server
-# Required for HPA (horizontal pod autoscaling) to work
+# -------------------------------------------------------------------
+# STEP 3 — Install Metrics Server (Robust Version)
 # -------------------------------------------------------------------
 echo ">>> Installing Metrics Server..."
-kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-kubectl rollout status deployment/metrics-server -n kube-system --timeout=120s
+# Download locally first to prevent stream timeouts
+curl -sLo /tmp/metrics-server.yaml https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+# Apply with validation turned off to handle network jitter
+kubectl apply -f /tmp/metrics-server.yaml --validate=false
+
+# Wait for it to pull the image
+echo "Waiting for Metrics Server image to pull..."
+sleep 10
+kubectl rollout status deployment/metrics-server -n kube-system --timeout=180s
 echo "    Metrics Server ready."
 
 # -------------------------------------------------------------------
