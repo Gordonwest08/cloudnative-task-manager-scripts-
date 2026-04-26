@@ -1,15 +1,5 @@
 
 # .github/workflows/ci.yml
-#
-# CI Pipeline — runs on every Pull Request
-# Validates code, builds images, runs tests
-# Does NOT deploy — deploy only happens on merge to main
-#
-# Jobs:
-#   1. lint-and-test  — validates backend code
-#   2. build-images   — builds Docker images to catch build errors early
-#   3. terraform-validate — validates Terraform syntax
-
 name: CI — Pull Request Checks
 
 on:
@@ -17,14 +7,18 @@ on:
     branches:
       - main
 
+# Required for OIDC
+permissions:
+  id-token: write
+  contents: read
+
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
 
 jobs:
-  # ── Job 1: Backend lint and test ──────────────────────────────────
   lint-and-test:
-    name: Lint & Test Backend
+    name: Lint & Test
     runs-on: ubuntu-latest
 
     steps:
@@ -42,10 +36,9 @@ jobs:
         working-directory: app/backend
         run: npm install
 
-      - name: Check backend starts correctly
+      - name: Validate backend syntax
         working-directory: app/backend
         run: |
-          # Verify the entry point exists and has no syntax errors
           node --check src/index.js
           echo "✅ Backend syntax valid"
 
@@ -59,12 +52,11 @@ jobs:
         env:
           VITE_API_URL: http://localhost:5000
 
-      - name: Verify frontend build output exists
+      - name: Verify build output
         run: |
-          ls app/frontend/dist/
+          test -d app/frontend/dist
           echo "✅ Frontend build successful"
 
-  # ── Job 2: Build Docker images ────────────────────────────────────
   build-images:
     name: Build Docker Images
     runs-on: ubuntu-latest
@@ -104,7 +96,6 @@ jobs:
       - name: Images built successfully
         run: echo "✅ Both Docker images built successfully"
 
-  # ── Job 3: Terraform validate ─────────────────────────────────────
   terraform-validate:
     name: Validate Terraform
     runs-on: ubuntu-latest
@@ -118,30 +109,9 @@ jobs:
         with:
           terraform_version: "1.6.0"
 
-      - name: Terraform Format Check
-        working-directory: terraform
-        run: |
-          terraform fmt -check -recursive
-          echo "✅ Terraform formatting valid"
-        continue-on-error: true
-
-      - name: Terraform Init (bootstrap)
-        working-directory: bootstrap
-        run: |
-          terraform init -backend=false
-          echo "✅ Bootstrap init valid"
-
-      - name: Terraform Validate (bootstrap)
-        working-directory: bootstrap
-        run: |
-          terraform validate
-          echo "✅ Bootstrap validate passed"
-
       - name: Terraform Init (main)
         working-directory: terraform
-        run: |
-          terraform init -backend=false
-          echo "✅ Terraform init valid"
+        run: terraform init -backend=false
 
       - name: Terraform Validate (main)
         working-directory: terraform

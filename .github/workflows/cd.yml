@@ -1,20 +1,16 @@
 
 # .github/workflows/cd.yml
-#
-# CD Pipeline — runs on every push to main
-# Builds Docker images, pushes to ECR, deploys to EKS
-#
-# Flow:
-#   1. test        — run tests first, abort if they fail
-#   2. build-push  — build images, push to ECR with commit SHA tag
-#   3. deploy      — update Kubernetes deployments with new images
-
 name: CD — Build, Push, Deploy
 
 on:
   push:
     branches:
       - main
+
+# Required for OIDC authentication to AWS
+permissions:
+  id-token: write
+  contents: read
 
 env:
   AWS_REGION:       ${{ secrets.AWS_REGION }}
@@ -73,6 +69,7 @@ jobs:
 
     outputs:
       image-tag: ${{ steps.meta.outputs.tag }}
+      alb-url: ${{ steps.alb.outputs.alb_url }}
 
     steps:
       - name: Checkout code
@@ -114,7 +111,7 @@ jobs:
             2>/dev/null || echo "")
 
           if [ -z "$ALB_HOST" ]; then
-            echo "⚠️  No ALB found — using placeholder URL"
+            echo "⚠️  No ALB found — using placeholder"
             echo "alb_url=http://localhost:5000" >> $GITHUB_OUTPUT
           else
             echo "✅ ALB URL: http://${ALB_HOST}"
