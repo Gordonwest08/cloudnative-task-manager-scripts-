@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: 910541869155.dkr.ecr.us-east-1.amazonaws.com/taskmanager/backend:
+          image: 910541869155.dkr.ecr.us-east-1.amazonaws.com/taskmanager/backend:c22bdb1
           imagePullPolicy: Always
           ports:
             - containerPort: 5000
