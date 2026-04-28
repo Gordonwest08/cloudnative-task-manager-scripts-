@@ -41,7 +41,7 @@ echo "    All nodes Ready."
 echo ">>> Installing Metrics Server..."
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 kubectl rollout status deployment/metrics-server \
-  -n kube-system --timeout=120s
+  -n kube-system --timeout=12000s
 echo "    Metrics Server ready."
 
 # STEP 4 — EBS CSI Driver
@@ -97,27 +97,49 @@ metadata:
 EOF
 echo "    Service account created."
 
-# STEP 7 — ALB Controller
+# # STEP 7 — ALB Controller
 echo ">>> Installing AWS Load Balancer Controller..."
 curl -sLo /tmp/alb-controller.yaml \
   https://github.com/kubernetes-sigs/aws-load-balancer-controller/releases/download/v2.7.2/v2_7_2_full.yaml
 
+# Inject cluster name, VPC ID and region
 sed -i "s/--cluster-name=your-cluster-name/--cluster-name=${CLUSTER_NAME}\n        - --aws-vpc-id=${VPC_ID}\n        - --aws-region=${REGION}/g" \
   /tmp/alb-controller.yaml
 
-kubectl apply -f /tmp/alb-controller.yaml
-rm /tmp/alb-controller.yaml
+# CRITICAL: Remove the ServiceAccount from the manifest before applying
+# The manifest has empty annotations which overwrites our IAM role annotation
+# We created the service account in STEP 6 with the correct annotation
+python3 -c "
+import yaml, sys
 
-# Reapply service account annotation
-kubectl annotate serviceaccount aws-load-balancer-controller \
-  -n kube-system \
-  eks.amazonaws.com/role-arn=$ALB_ROLE_ARN \
-  --overwrite
+with open('/tmp/alb-controller.yaml', 'r') as f:
+    content = f.read()
+
+docs = list(yaml.safe_load_all(content))
+filtered = [d for d in docs if d is not None and
+            not (d.get('kind') == 'ServiceAccount' and
+                 d.get('metadata', {}).get('name') == 'aws-load-balancer-controller')]
+
+with open('/tmp/alb-controller-filtered.yaml', 'w') as f:
+    yaml.dump_all(filtered, f, default_flow_style=False)
+
+print(f'Filtered {len(docs) - len(filtered)} ServiceAccount resource(s)')
+"
+
+kubectl apply -f /tmp/alb-controller-filtered.yaml
+rm /tmp/alb-controller.yaml /tmp/alb-controller-filtered.yaml
+
+echo ">>> Verifying service account annotation is intact..."
+kubectl get serviceaccount aws-load-balancer-controller \
+  -n kube-system -o jsonpath='{.metadata.annotations.eks\.amazonaws\.com/role-arn}'
+echo ""
 
 echo ">>> Waiting for ALB Controller..."
 kubectl rollout status deployment/aws-load-balancer-controller \
   -n kube-system --timeout=180s
 echo "    ALB Controller ready."
+
+
 
 # STEP 8 — IngressClass
 echo ">>> Creating IngressClass..."

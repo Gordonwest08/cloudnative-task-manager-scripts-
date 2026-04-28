@@ -20,21 +20,21 @@ echo "    Waiting 30s for ALB to be released..."
 sleep 30
 
 # Forcefully delete the ALB via AWS CLI as a safety net
-echo ">>> Safety check — deleting any remaining ALBs..."
-ALB_ARN=$(aws elbv2 describe-load-balancers \
-  --region us-east-1 \
-  --query 'LoadBalancers[?contains(LoadBalancerName, `k8s-producti`)].LoadBalancerArn' \
-  --output text 2>/dev/null || echo "")
-
-if [ -n "$ALB_ARN" ]; then
-  aws elbv2 delete-load-balancer \
-    --load-balancer-arn $ALB_ARN \
-    --region us-east-1
-  echo "    ALB deleted. Waiting 30s..."
-  sleep 30
-else
-  echo "    No ALBs found."
-fi
+#echo ">>> Safety check — deleting any remaining ALBs..."
+#ALB_ARN=$(aws elbv2 describe-load-balancers \
+#  --region us-east-1 \
+#  --query 'LoadBalancers[?contains(LoadBalancerName, `k8s-producti`)].LoadBalancerArn' \
+#  --output text 2>/dev/null || echo "")
+#
+#if [ -n "$ALB_ARN" ]; then
+#  aws elbv2 delete-load-balancer \
+#    --load-balancer-arn $ALB_ARN \
+#    --region us-east-1
+#  echo "    ALB deleted. Waiting 30s..."
+#  sleep 30
+#else
+#  echo "    No ALBs found."
+#fi
 
 
 # Step 2 — Delete namespaces
