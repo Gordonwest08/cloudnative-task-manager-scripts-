@@ -1,3 +1,4 @@
+
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -9,9 +10,6 @@ metadata:
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
     alb.ingress.kubernetes.io/healthcheck-path: /
     alb.ingress.kubernetes.io/success-codes: "200-399"
-    # No subnet annotation — ALB controller auto-discovers subnets
-    # using the kubernetes.io/role/elb=1 tag on public subnets
-    # set by Terraform in modules/vpc/main.tf
 spec:
   ingressClassName: alb
   rules:
@@ -32,6 +30,13 @@ spec:
                 port:
                   number: 5000
           - path: /ready
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-service
+                port:
+                  number: 5000
+          - path: /version
             pathType: Prefix
             backend:
               service:
